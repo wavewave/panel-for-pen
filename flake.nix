@@ -8,7 +8,15 @@
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        hsenv = pkgs.haskellPackages.ghcWithPackages
-          (p: [ p.cabal-install p.gi-gtk p.errors ]);
-      in { devShell = pkgs.mkShell { buildInputs = [ hsenv ]; }; });
+        newHs = pkgs.haskellPackages.override (old: {
+          overrides = self: super: {
+            "panel-for-pen" = self.callCabal2nix "panel-for-pen" ./. { };
+          };
+        });
+        hsenv =
+          newHs.ghcWithPackages (p: [ p.cabal-install p.gi-gtk p.errors ]);
+      in {
+        defaultPackage = newHs.panel-for-pen;
+        devShell = pkgs.mkShell { buildInputs = [ hsenv ]; };
+      });
 }
