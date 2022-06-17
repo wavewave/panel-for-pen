@@ -8,6 +8,7 @@
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        hsenv = pkgs.haskellPackages.ghcWithPackages (p: [ p.cabal-install ]);
+        hsenv = pkgs.haskellPackages.ghcWithPackages
+          (p: [ p.cabal-install p.gi-gtk ]);
       in { devShell = pkgs.mkShell { buildInputs = [ hsenv ]; }; });
 }
