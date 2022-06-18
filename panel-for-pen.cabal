@@ -33,6 +33,7 @@ executable panel-for-pen
                       errors,
                       gi-gdk,
                       gi-gtk,
+                      process,
                       transformers
     hs-source-dirs:   app
     default-language: Haskell2010
