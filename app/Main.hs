@@ -54,7 +54,8 @@ main = do
             #gravity := Gdk.GravityNorthWest,
             #decorated := False
           ]
-      Gtk.widgetSetSizeRequest window width 30
+      #setSizeRequest window width 30
+      #stick window
       on window #destroy Gtk.mainQuit
       box <- new Gtk.Box []
 
