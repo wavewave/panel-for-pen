@@ -13,8 +13,8 @@
             "panel-for-pen" = self.callCabal2nix "panel-for-pen" ./. { };
           };
         });
-        hsenv =
-          newHs.ghcWithPackages (p: [ p.cabal-install p.gi-gtk p.errors ]);
+        hsenv = newHs.ghcWithPackages
+          (p: [ p.cabal-install p.gi-gtk p.errors p.X11 ]);
       in {
         defaultPackage = newHs.panel-for-pen;
         devShell = pkgs.mkShell { buildInputs = [ hsenv ]; };

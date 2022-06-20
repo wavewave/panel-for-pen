@@ -34,6 +34,8 @@ executable panel-for-pen
                       gi-gdk,
                       gi-gtk,
                       process,
-                      transformers
+                      text,
+                      transformers,
+                      X11
     hs-source-dirs:   app
     default-language: Haskell2010
