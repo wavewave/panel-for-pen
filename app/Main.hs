@@ -12,13 +12,15 @@ import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe, listToMaybe)
 import qualified Data.Text as T
 import Data.Word (Word32)
+import Foreign.C.Types (CLong)
 import qualified GI.Gdk as Gdk
 import qualified GI.Gdk.Enums as Gdk
 import GI.Gtk (AttrOp ((:=)), get, new, on, set)
 import qualified GI.Gtk as Gtk
 import qualified GI.Gtk.Enums as Gtk
 import qualified Graphics.X11.Xlib.Atom as X11
-  ( internAtom,
+  ( cARDINAL,
+    internAtom,
   )
 import qualified Graphics.X11.Xlib.Display as X11
   ( closeDisplay,
@@ -26,6 +28,10 @@ import qualified Graphics.X11.Xlib.Display as X11
     openDisplay,
   )
 import qualified Graphics.X11.Xlib.Extras as X11
+  ( changeProperty32,
+    getWindowProperty32,
+    propModeReplace,
+  )
 import qualified Graphics.X11.Xlib.Types as X11 (Display)
 import System.Process
   ( CreateProcess (..),
@@ -53,19 +59,40 @@ runHoodle = runApp "hoodle"
 runChrome :: IO ()
 runChrome = runApp "google-chrome-stable"
 
-addWorkspaceButton :: Gtk.Box -> Int -> IO ()
-addWorkspaceButton box n = do
-  button <- new Gtk.Button [#label := T.pack (show n)]
-  on button #clicked (pure ())
-  #packStart box button False False padding
+getX11Property :: X11.Display -> String -> IO (Maybe [CLong])
+getX11Property x11disp propName = do
+  atom <- X11.internAtom x11disp propName True
+  let rwin = X11.defaultRootWindow x11disp
+  X11.getWindowProperty32 x11disp atom rwin
 
 getNumberOfWorkspaces :: X11.Display -> IO Int
 getNumberOfWorkspaces x11disp = do
-  atom <- X11.internAtom x11disp "_NET_NUMBER_OF_DESKTOPS" True
-  let rwin = X11.defaultRootWindow x11disp
-  mval <- X11.getWindowProperty32 x11disp atom rwin
+  mval <- getX11Property x11disp "_NET_NUMBER_OF_DESKTOPS"
   let result = fromIntegral $ fromMaybe 1 $ join (fmap listToMaybe mval)
   pure result
+
+getCurrentWorkspace :: X11.Display -> IO Int
+getCurrentWorkspace x11disp = do
+  mval <- getX11Property x11disp "_NET_CURRENT_DESKTOP"
+  print mval
+  let result = fromIntegral $ fromMaybe 1 $ join (fmap listToMaybe mval)
+  pure result
+
+changeWorkspace :: X11.Display -> Int -> IO ()
+changeWorkspace x11disp idx = do
+  atom <- X11.internAtom x11disp "_NET_CURRENT_DESKTOP" True
+  let rwin = X11.defaultRootWindow x11disp
+  X11.changeProperty32 x11disp rwin atom X11.cARDINAL X11.propModeReplace [fromIntegral idx]
+
+addWorkspaceButton :: X11.Display -> Gtk.Box -> Int -> IO ()
+addWorkspaceButton x11disp box n = do
+  button <- new Gtk.Button [#label := T.pack (show n)]
+  on button #clicked $ do
+    changeWorkspace x11disp (n - 1)
+    val <- getCurrentWorkspace x11disp
+    -- changeWorkspace x11disp
+    print val
+  #packStart box button False False padding
 
 main :: IO ()
 main = do
@@ -103,7 +130,7 @@ main = do
         #packStart box buttonTerminal True True padding
         #packStart box buttonHoodle True True padding
         #packStart box buttonChrome True True padding
-        traverse_ (addWorkspaceButton box) [1 .. numWorkspaces]
+        traverse_ (addWorkspaceButton x11disp box) [1 .. numWorkspaces]
 
         buttonClose <-
           new Gtk.Button [#label := "Close"]
