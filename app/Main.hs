@@ -7,25 +7,20 @@ import Control.Error.Util (failWithM)
 import Control.Exception (bracket)
 import Control.Monad (join)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.Except (ExceptT (..), runExceptT)
+import Control.Monad.Trans.Except (runExceptT)
 import Data.Foldable (traverse_)
 import Data.Maybe (fromMaybe, listToMaybe)
 import qualified Data.Text as T
 import Data.Word (Word32)
 import Foreign.C.Types (CLong)
 import qualified GI.Gdk as Gdk
-import qualified GI.Gdk.Enums as Gdk
 import GI.Gtk (AttrOp ((:=)), get, new, on, set)
 import qualified GI.Gtk as Gtk
-import qualified GI.Gtk.Enums as Gtk
 import qualified Graphics.X11.Types as X11
   ( clientMessage,
     substructureNotifyMask,
   )
-import qualified Graphics.X11.Xlib.Atom as X11
-  ( cARDINAL,
-    internAtom,
-  )
+import qualified Graphics.X11.Xlib.Atom as X11 (internAtom)
 import qualified Graphics.X11.Xlib.Display as X11
   ( closeDisplay,
     defaultRootWindow,
@@ -33,23 +28,18 @@ import qualified Graphics.X11.Xlib.Display as X11
   )
 import qualified Graphics.X11.Xlib.Event as X11
   ( allocaXEvent,
-    flush,
     sendEvent,
     sync,
   )
 import qualified Graphics.X11.Xlib.Extras as X11
-  ( changeProperty32,
-    currentTime,
+  ( currentTime,
     getWindowProperty32,
-    propModeReplace,
     setClientMessageEvent,
-    setClientMessageEvent',
     setEventType,
   )
 import qualified Graphics.X11.Xlib.Types as X11 (Display)
 import System.Process
-  ( CreateProcess (..),
-    createProcess,
+  ( createProcess,
     proc,
   )
 
@@ -106,7 +96,7 @@ changeWorkspace x11disp idx = do
 addWorkspaceButton :: X11.Display -> Gtk.Box -> Int -> IO ()
 addWorkspaceButton x11disp box n = do
   button <- new Gtk.Button [#label := T.pack (show n)]
-  on button #clicked $ do
+  _ <- on button #clicked $ do
     putStrLn $ "change workspace to " ++ show (n - 1)
     changeWorkspace x11disp (n - 1)
     val <- getCurrentWorkspace x11disp
@@ -119,7 +109,7 @@ main = do
     numWorkspaces <-
       (\n -> if n > 10 then 10 else n) <$> getNumberOfWorkspaces x11disp
     e <- runExceptT $ do
-      liftIO $ Gtk.init Nothing
+      _ <- liftIO $ Gtk.init Nothing
       display <- failWithM NoDisplay Gdk.displayGetDefault
       monitor <- failWithM NoMonitor (#getPrimaryMonitor display)
       liftIO $ do
@@ -134,18 +124,18 @@ main = do
             ]
         #setSizeRequest window width 30
         #stick window
-        on window #destroy Gtk.mainQuit
+        _ <- on window #destroy Gtk.mainQuit
         box <- new Gtk.Box []
 
         buttonTerminal <-
           new Gtk.Button [#label := "Terminal"]
-        on buttonTerminal #clicked runTerminal
+        _ <- on buttonTerminal #clicked runTerminal
         buttonHoodle <-
           new Gtk.Button [#label := "Hoodle"]
-        on buttonHoodle #clicked runHoodle
+        _ <- on buttonHoodle #clicked runHoodle
         buttonChrome <-
           new Gtk.Button [#label := "Chrome"]
-        on buttonChrome #clicked runChrome
+        _ <- on buttonChrome #clicked runChrome
         #packStart box buttonTerminal True True padding
         #packStart box buttonHoodle True True padding
         #packStart box buttonChrome True True padding
@@ -153,7 +143,7 @@ main = do
 
         buttonClose <-
           new Gtk.Button [#label := "Close"]
-        on buttonClose #clicked Gtk.mainQuit
+        _ <- on buttonClose #clicked Gtk.mainQuit
         #packStart box buttonClose True True padding
 
         set window [#child := box]
