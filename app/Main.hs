@@ -18,6 +18,10 @@ import qualified GI.Gdk.Enums as Gdk
 import GI.Gtk (AttrOp ((:=)), get, new, on, set)
 import qualified GI.Gtk as Gtk
 import qualified GI.Gtk.Enums as Gtk
+import qualified Graphics.X11.Types as X11
+  ( clientMessage,
+    substructureNotifyMask,
+  )
 import qualified Graphics.X11.Xlib.Atom as X11
   ( cARDINAL,
     internAtom,
@@ -27,10 +31,20 @@ import qualified Graphics.X11.Xlib.Display as X11
     defaultRootWindow,
     openDisplay,
   )
+import qualified Graphics.X11.Xlib.Event as X11
+  ( allocaXEvent,
+    flush,
+    sendEvent,
+    sync,
+  )
 import qualified Graphics.X11.Xlib.Extras as X11
   ( changeProperty32,
+    currentTime,
     getWindowProperty32,
     propModeReplace,
+    setClientMessageEvent,
+    setClientMessageEvent',
+    setEventType,
   )
 import qualified Graphics.X11.Xlib.Types as X11 (Display)
 import System.Process
@@ -80,17 +94,22 @@ getCurrentWorkspace x11disp = do
 
 changeWorkspace :: X11.Display -> Int -> IO ()
 changeWorkspace x11disp idx = do
-  atom <- X11.internAtom x11disp "_NET_CURRENT_DESKTOP" True
-  let rwin = X11.defaultRootWindow x11disp
-  X11.changeProperty32 x11disp rwin atom X11.cARDINAL X11.propModeReplace [fromIntegral idx]
+  cmd <- X11.internAtom x11disp "_NET_CURRENT_DESKTOP" True
+  let arg = fromIntegral idx
+  let root = X11.defaultRootWindow x11disp
+  X11.allocaXEvent $ \e -> do
+    X11.setEventType e X11.clientMessage
+    X11.setClientMessageEvent e root cmd 32 arg X11.currentTime
+    X11.sendEvent x11disp root False X11.substructureNotifyMask e
+    X11.sync x11disp False
 
 addWorkspaceButton :: X11.Display -> Gtk.Box -> Int -> IO ()
 addWorkspaceButton x11disp box n = do
   button <- new Gtk.Button [#label := T.pack (show n)]
   on button #clicked $ do
+    putStrLn $ "change workspace to " ++ show (n - 1)
     changeWorkspace x11disp (n - 1)
     val <- getCurrentWorkspace x11disp
-    -- changeWorkspace x11disp
     print val
   #packStart box button False False padding
 
